@@ -1,0 +1,199 @@
+import pandas as pd
+import numpy as np
+import pickle as pkl
+from os.path import exists
+import collections as coll
+
+Unknown = 3
+Dash = 2
+Error = 2
+true = 1
+false = 0
+readfile = 'small_high_error_2_chromosomes_training_reads.txt'
+pklfile = 'dfpickle_small_high_error_2_chromosomes_training.p'
+haplofile = 'small_high_error_2_chromosomes_training_haplotypes.txt'
+
+
+def file_len(fname):
+    with open(fname) as f:
+        cnt = -1
+        for cnt, l in enumerate(f):
+            pass
+    return cnt + 1
+
+if not exists(pklfile):
+    with open(readfile) as f:
+        lines = f.read().splitlines()
+        nCol = len(lines[0])
+
+    nLines = file_len(readfile)
+    print "Read in " + str(nLines) + " total lines."
+
+    df = pd.DataFrame(dtype=np.int8)
+    lmod = []
+
+    d = coll.OrderedDict([])
+    for l in lines:
+        d[l] = d.get(l, 0) + 1
+    f3 = open('modfile.txt', 'w')
+    for k, v in d.items():
+        if v > 1:
+            lmod = k.replace("-", "2")
+            lint = [int(i) for i in list(lmod)]
+            f3.write(k)
+            f3.write('\n')
+            df = df.append([lint])
+
+            print "Appended"
+    f3.close()
+    nLines = len(df.index)
+    pkl.dump(df, open(pklfile, "wb"))
+
+else:
+    df = pkl.load(open(pklfile, "rb"))
+    nCol = len(df.iloc[0])
+    nLines = len(df.index)
+print "Parsed!"
+
+print df.head(11)
+
+counter = 0
+dashcnt = 0
+inc = 0
+h0 = []
+h0read = [1]
+newBool = 2
+visited = False
+nextCol = 0
+for j in range(nCol):
+    h0.append(Dash)
+
+for k in range(nLines - 1):
+    h0read.append(Unknown)
+
+for i in range(nLines):
+    for r in df.iloc[i]:
+        if r == Dash:
+            dashcnt += 1
+            if dashcnt > nextCol:
+                nextCol = dashcnt
+                visited = False
+        elif r != Dash:
+            if h0read[i] == true:
+                if h0[counter] == Dash:
+                    h0[counter] = r
+                    if not visited:
+                        for m in range(i, nLines):
+                            if df.iloc[m][counter] == Dash:
+                                break
+                            if h0read[m] == Unknown:
+                                while counter != nCol - inc and df.iloc[i][counter + inc] != Dash:
+                                    if df.iloc[m][counter + inc] == abs(df.iloc[i][counter + inc]-1):
+                                        inc += 1
+                                        newBool = true
+                                    else:
+                                        h0read[m] = Error
+                                        newBool = false
+                                        break
+                                if newBool == true:
+                                    h0read[m] = false
+                                inc = 0
+                                newBool = 2
+                        visited = True
+            elif h0read[i] == false:
+                if h0[counter] == Dash:
+                    h0[counter] = abs(r - 1)
+                    if not visited:
+                        for m in range(i, nLines):
+                            if df.iloc[m][counter] == Dash:
+                                break
+                            if h0read[m] == Unknown and m != i:
+                                while counter != nCol - inc and df.iloc[i][counter + inc] != Dash:
+                                    if df.iloc[m][counter + inc] == abs(df.iloc[i][counter + inc] - 1):
+                                        inc += 1
+                                        newBool = true
+                                    else:
+                                        h0read[m] = Error
+                                        newBool = false
+                                        break
+                                if newBool == true:
+                                    h0read[m] = true
+                                inc = 0
+                                newBool = 2
+                        visited = True
+            elif h0read[i] == Unknown:
+                for m in range(i, nLines):
+                    if df.iloc[m][counter] == Dash:
+                        break
+                    if h0read[m] == Unknown and m != i:
+                        while counter != nCol - inc and df.iloc[i][counter + inc] != Dash:
+                            if df.iloc[m][counter + inc] == abs(df.iloc[i][counter + inc] - 1):
+                                inc += 1
+                                newBool = true
+                            else:
+                                newBool = false
+                                break
+                        if newBool == true and df.iloc[m][counter] == h0[counter]:
+                            h0read[m] = true
+                            h0read[i] = false
+                            #h0[counter] = abs(r - 1)
+                        elif newBool == true and df.iloc[m][counter] == abs(h0[counter] - 1):
+                            h0read[m] = false
+                            h0read[i] = true
+                            #h0[counter] = r
+                        '''elif newBool == true and (counter != nCol - 1 and df.iloc[m][counter + 1] == abs(h0[counter + 1] - 1)):
+                            h0read[m] = false
+                            h0read[i] = true
+                        elif newBool == true and (counter != nCol - 1 and df.iloc[m][counter + 1] == h0[counter + 1]):
+                            h0read[m] = true
+                            h0read[i] = false'''
+                        inc = 0
+                        newBool = 2
+                        visited = True
+                if h0read[i] == Unknown:
+                    break
+        if r != Dash and counter != nCol - 1 and df.iloc[i][counter + 1] == Dash:
+            break
+        counter += 1
+    counter = 0
+    dashcnt = 0
+    print "Line " + str(i) + "/" + str(nLines)
+
+
+f4 = open('knownLines.txt', 'w')
+for i in range(nLines):
+    if h0read[i] == Unknown:
+        print "Unknown Line " + str(i) + "/" + str(nLines)
+    else:
+        for item in df.iloc[i]:
+            f4.write("%s" % item)
+        f4.write("\n")
+    if h0read[i] == Error:
+        print "Error Line " + str(i) + "/" + str(nLines)
+f4.close()
+
+h1 = []
+counter = 0
+for b in h0:
+    counter +=1
+    if b == 0:
+        h1.append(1)
+    elif b == 1:
+        h1.append(0)
+    elif b == 2:
+        h1.append(2)
+        print counter
+
+print h0read
+print h0
+print h1
+
+f2 = open(haplofile, 'w')
+
+for item in h0:
+    f2.write("%s" % item)
+f2.write("\n")
+for item in h1:
+    f2.write("%s" % item)
+
+f2.close()

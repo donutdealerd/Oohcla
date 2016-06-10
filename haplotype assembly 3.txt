@@ -1,0 +1,98 @@
+import pandas as pd
+import numpy as np
+import pickle as pkl
+
+Unknown = 2
+Dash = 2
+
+def file_len(fname):
+    with open(fname) as f:
+        cnt = -1
+        for cnt, l in enumerate(f):
+            pass
+    return cnt + 1
+
+with open('Haplo_Reads.txt') as f:
+    lines = f.read().splitlines()
+    nCol = len(lines[0])
+
+nLines = file_len('Haplo_Reads.txt')
+print "Read in " + str(nLines) + "total lines."
+
+df = pd.DataFrame(dtype=np.int8)
+lmod = []
+
+for l in lines:
+    lmod = l.replace("-", "2")
+    lint = [int(i) for i in list(lmod)]
+    df = df.append([lint])
+    print "Appended"
+
+#print df.head(11)
+print "Parsed!"
+
+counter = 0
+h0 = []
+h0read = [1]
+for j in range(nCol):
+    h0.append(2)
+
+for k in range(nLines - 1):
+    h0read.append(2)
+
+for i in range(nLines):
+    for r in df.iloc[i]:
+        if counter != nCol - 1 and r != Dash and df.iloc[i][counter + 1] == Dash:
+            break
+            if h0read[i] == 1:
+                if r != Dash:
+                    h0[counter] = r
+                    for m in range(nLines):
+                        if h0read[m] == Unknown:
+                            if df.iloc[m][counter] == r:
+                                h0read[m] = 1
+                            elif df.iloc[m][counter] == abs(r-1):
+                                h0read[m] = 0
+            elif h0read[i] == 0:
+                if r != Dash:
+                    h0[counter] = abs(r - 1)
+                    for n in range(nLines):
+                        if h0read[m] == Unknown:
+                            if df.iloc[n][counter] == r:
+                                h0read[n] = 0
+                            elif df.iloc[n][counter] == abs(r - 1):
+                                h0read[n] = 1
+        counter += 1
+    counter = 0
+    print "Line " + str(i) + "/" + str(nLines)
+
+
+for i in range(nLines):
+    for r in df.iloc[i]:
+        if h0read[i] == Unknown:
+            if r != Dash:
+                h0[counter] = r
+        counter += 1
+    counter = 0
+    print "Unknown Line " + str(i) + "/" + str(nLines)
+
+h1 = []
+for b in h0:
+    if b == 0:
+        h1.append(1)
+    elif b == 1:
+        h1.append(0)
+
+print h0read
+print h0
+print h1
+
+f2 = open('Haplo_Assembly1_new.txt', 'w')
+
+for item in h0:
+    f2.write("%s" % item)
+f2.write("\n")
+for item in h1:
+    f2.write("%s" % item)
+
+f2.close()

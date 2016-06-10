@@ -1,0 +1,77 @@
+import pandas as pd
+import numpy as np
+
+
+def file_len(fname):
+    with open(fname) as f:
+        cnt = -1
+        for cnt, l in enumerate(f):
+            pass
+    return cnt + 1
+
+
+
+dtype_dict = {'SNP{:05}'.format(_): np.int8 for _ in range(13)}
+df = pd.read_csv('Haplo_Reads.txt', sep='', index_col=0, dtype=dtype_dict,)
+
+#print df.head(11)
+counter = 0
+h0 = []
+h0read = ['True']
+for j in df:
+    h0.append(2)
+for k in range(len(df.index) - 1):
+    h0read.append('Unknown')
+
+for i in range(1, len(df.index) + 1):
+    for r in df.loc['read' + str(i), ]:
+        if h0read[i-1] == 'True':
+            if r != '-':
+                h0[counter] = int(r)
+                for m in range(1, len(df.index) + 1):
+                    if df.loc['read' + str(m), ][counter] == r:
+                        h0read[m-1] = 'True'
+                    elif df.loc['read' + str(m), ][counter] == str(abs(int(r)-1)):
+                        h0read[m - 1] = 'False'
+        elif h0read[i-1] == 'False':
+            if r != '-':
+                h0[counter] = abs(int(r) - 1)
+                for n in range(1, len(df.index) + 1):
+                    if df.loc['read' + str(n), ][counter] == r:
+                        h0read[n - 1] = 'False'
+                    elif df.loc['read' + str(n), ][counter] == str(abs(int(r) - 1)):
+                        h0read[n - 1] = 'True'
+        counter += 1
+    counter = 0
+
+
+for i in range(1, len(df.index) + 1):
+    for r in df.loc['read' + str(i), ]:
+        if h0read[i-1] == 'Unknown':
+            if r != '-':
+                h0[counter] = int(r)
+        counter += 1
+    counter = 0
+print h0read
+print h0
+
+'''
+for i in range(1, 11):
+    h0read = True
+    for r in df.loc['read' + str(i), ]:
+        if r != '-' and h0[counter] != 2 and h0[counter] != r:
+            h0read = False
+        counter += 1
+    counter = 0
+    for r in df.loc['read' + str(i),]:
+        if r != '-':
+            if h0read[counter]:
+                h0[counter] = int(r)
+            else:
+                h0[counter] = abs(int(r)-1)
+        counter += 1
+    counter = 0
+print h0
+'''
+# print df.loc['read' + str(i), ][counter - 1]
+

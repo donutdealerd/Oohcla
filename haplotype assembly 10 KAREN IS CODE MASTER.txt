@@ -1,0 +1,130 @@
+import pandas as pd
+import numpy as np
+import pickle as pkl
+from os.path import exists
+import collections as coll
+
+Unknown = 3
+Dash = 2
+Error = 2
+true = 1
+false = 0
+readfile = 'large_high_error_2_chromosomes_training_reads.txt'
+pklfile = 'dfpickle_large_high_error_2_chromosomes_training.p'
+haplofile = 'large_high_error_2_chromosomes_training_haplotypes.txt'
+
+
+def file_len(fname):
+    with open(fname) as f:
+        cnt = -1
+        for cnt, l in enumerate(f):
+            pass
+    return cnt + 1
+
+if not exists(pklfile):
+    with open(readfile) as f:
+        lines = f.read().splitlines()
+        nCol = len(lines[0])
+
+    nLines = file_len(readfile)
+    print "Read in " + str(nLines) + " total lines."
+
+    df = pd.DataFrame(dtype=np.int8)
+    lmod = []
+
+    d = coll.OrderedDict([])
+    for l in lines:
+        d[l] = d.get(l, 0) + 1
+    f3 = open('modfile.txt', 'w')
+    for k, v in d.items():
+        if v > 1:
+            lmod = k.replace("-", "2")
+            lint = [int(i) for i in list(lmod)]
+            f3.write(k)
+            f3.write('\n')
+            df = df.append([lint])
+            print "Appended"
+    f3.close()
+    nLines = len(df.index)
+    pkl.dump(df, open(pklfile, "wb"))
+
+else:
+    df = pkl.load(open(pklfile, "rb"))
+    nCol = len(df.iloc[0])
+    nLines = len(df.index)
+print "Parsed!"
+
+print df.head(11)
+
+
+h0 = []
+h0read = [1]
+nextCol = 0
+for j in range(nCol):
+    h0.append(Dash)
+
+for k in range(nLines - 1):
+    h0read.append(Unknown)
+
+h0[0] = df.iloc[0][0]
+h0[1] = df.iloc[0][1]
+
+nextZero = 0
+nextOne = 0
+seenNum = False
+i = 0
+
+
+for c in range(1, nCol):
+    for r in range(i, nLines):
+        if c != nCol - 1 and df.iloc[r][c + 1] == Dash and not seenNum:
+            i += 1
+        if c != nCol - 1 and df.iloc[r][c+1] == Dash and seenNum:
+            break
+        if df.iloc[r][c] != Dash and (c != nCol - 1 and df.iloc[r][c+1] != Dash):
+            seenNum = True
+            if df.iloc[r][c] == h0[c]:
+                if c != nCol - 1 and df.iloc[r][c+1] == 0:
+                    nextZero += 1
+                elif c != nCol - 1 and df.iloc[r][c+1] == 1:
+                    nextOne += 1
+            elif df.iloc[r][c] != h0[c]:
+                if c != nCol - 1 and df.iloc[r][c + 1] == 0:
+                    nextOne += 1
+                elif c != nCol - 1 and df.iloc[r][c + 1] == 1:
+                    nextZero += 1
+    seenNum = False
+    if nextZero >= nextOne and c != nCol - 1:
+        h0[c+1] = 0
+    elif nextZero < nextOne and c != nCol - 1:
+        h0[c+1] = 1
+    nextZero = 0
+    nextOne = 0
+    print "Col " + str(c) + "/" + str(nCol)
+
+
+h1 = []
+counter = 0
+for b in h0:
+    counter +=1
+    if b == 0:
+        h1.append(1)
+    elif b == 1:
+        h1.append(0)
+    elif b == 2:
+        h1.append(2)
+        print counter
+
+
+print h0
+print h1
+
+f2 = open(haplofile, 'w')
+
+for item in h0:
+    f2.write("%s" % item)
+f2.write("\n")
+for item in h1:
+    f2.write("%s" % item)
+
+f2.close()

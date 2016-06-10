@@ -1,0 +1,113 @@
+import pandas as pd
+import numpy as np
+import pickle as pkl
+from os.path import exists
+
+Unknown = 2
+Dash = 2
+true = 1
+false = 0
+readfile = 'large_no_error_test_reads.txt'
+pklfile = 'dfpickle_large_no_error_test.p'
+haplofile = 'large_no_error_test_haplotypes.txt'
+
+def file_len(fname):
+    with open(fname) as f:
+        cnt = -1
+        for cnt, l in enumerate(f):
+            pass
+    return cnt + 1
+
+if not exists(pklfile):
+    with open(readfile) as f:
+        lines = f.read().splitlines()
+        nCol = len(lines[0])
+
+    nLines = file_len(readfile)
+    print "Read in " + str(nLines) + " total lines."
+
+    df = pd.DataFrame(dtype=np.int8)
+    lmod = []
+
+    for l in lines:
+        lmod = l.replace("-", "2")
+        lint = [int(i) for i in list(lmod)]
+        df = df.append([lint])
+        print "Appended"
+    pkl.dump(df, open(pklfile, "wb"))
+
+else:
+    df = pkl.load(open(pklfile, "rb"))
+    nCol = len(df.iloc[0])
+    nLines = file_len(readfile)
+print "Parsed!"
+
+# print df.head(11)
+
+counter = 0
+h0 = []
+h0read = [1]
+for j in range(nCol):
+    h0.append(Dash)
+
+for k in range(nLines - 1):
+    h0read.append(Unknown)
+
+for i in range(nLines):
+    for r in df.iloc[i]:
+        if r != Dash and counter != nCol - 1 and df.iloc[i][counter + 1] == Dash:
+            break
+        elif r != Dash:
+            if h0read[i] == true:
+                if h0[counter] == Dash:
+                    h0[counter] = r
+                    for m in range(nLines):
+                        if h0read[m] == Unknown:
+                            if df.iloc[m][counter] == r:
+                                h0read[m] = true
+                            elif df.iloc[m][counter] == abs(r-1):
+                                h0read[m] = false
+            elif h0read[i] == false:
+                if h0[counter] == Dash:
+                    h0[counter] = abs(r - 1)
+                    for n in range(nLines):
+                        if h0read[m] == Unknown:
+                            if df.iloc[n][counter] == r:
+                                h0read[n] = false
+                            elif df.iloc[n][counter] == abs(r - 1):
+                                h0read[n] = true
+        counter += 1
+    counter = 0
+    print "Line " + str(i) + "/" + str(nLines)
+
+
+for i in range(nLines):
+    for r in df.iloc[i]:
+        if h0read[i] == Unknown:
+            print "Unknown Line " + str(i) + "/" + str(nLines)
+            if r != Dash:
+                h0[counter] = r
+        counter += 1
+    counter = 0
+
+
+h1 = []
+for b in h0:
+    if b == 0:
+        h1.append(1)
+    elif b == 1:
+        h1.append(0)
+
+print h0read
+print h0
+print h1
+
+f2 = open(haplofile, 'w')
+
+for item in h0:
+    f2.write("%s" % item)
+f2.write("\n")
+for item in h1:
+    f2.write("%s" % item)
+
+f2.close()
